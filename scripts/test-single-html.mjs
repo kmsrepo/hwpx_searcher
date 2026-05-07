@@ -720,9 +720,50 @@ try {
   console.log(`Headless Chrome verified ${path.relative(process.cwd(), htmlPath)}: ${recursiveSearch.summary}`);
   await client.close();
 } finally {
-  chrome.kill("SIGTERM");
-  await new Promise((resolve) => chrome.once("exit", resolve));
+  await terminateChrome(chrome);
   await rm(userDataDir, { recursive: true, force: true });
+}
+
+async function terminateChrome(chrome) {
+  if (hasExited(chrome)) {
+    return;
+  }
+
+  chrome.kill("SIGTERM");
+  const exitedGracefully = await waitForProcessExit(chrome, 3000);
+  if (exitedGracefully || hasExited(chrome)) {
+    return;
+  }
+
+  chrome.kill("SIGKILL");
+  await waitForProcessExit(chrome, 3000);
+}
+
+function hasExited(childProcess) {
+  return childProcess.exitCode !== null || childProcess.signalCode !== null;
+}
+
+function waitForProcessExit(childProcess, timeoutMs) {
+  if (hasExited(childProcess)) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, timeoutMs);
+    const onExit = () => {
+      cleanup();
+      resolve(true);
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      childProcess.off("exit", onExit);
+    };
+
+    childProcess.once("exit", onExit);
+  });
 }
 
 function findChrome() {

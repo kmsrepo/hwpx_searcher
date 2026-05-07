@@ -89,7 +89,7 @@ jobs:
       - name: Install Chrome for smoke test
         if: steps.rhwp.outputs.changed == 'true'
         id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           install-dependencies: "true"
 
