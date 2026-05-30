@@ -715,6 +715,25 @@ try {
     throw new Error(`Common keyword search rendered too many detail rows or missed virtualization limits: ${JSON.stringify(commonKeywordSearch)}`);
   }
 
+  const commonKeywordPageToggle = await client.evaluate(`(async () => {
+    document.querySelector("[data-group-level='page']")?.click();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    document.querySelector(".page-match-row")?.click();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const expandedRows = [...document.querySelectorAll(".page-match-row[aria-expanded='true']")];
+    return {
+      expandedRows: expandedRows.length,
+      visibleDetails: [...document.querySelectorAll(".page-match-detail")].filter((detail) => !detail.hidden).length,
+      occurrenceRows: document.querySelectorAll(".occurrence-row").length,
+      limitNotices: document.querySelectorAll(".occurrence-limit-notice").length,
+      virtualRows: document.querySelectorAll(".virtual-page-match-row").length,
+      resultVirtualized: window.__HWP_SINGLE_HTML_TEST__.state().resultVirtualized,
+    };
+  })()`);
+  if (!commonKeywordPageToggle.resultVirtualized || commonKeywordPageToggle.expandedRows !== 1 || commonKeywordPageToggle.visibleDetails !== 1 || commonKeywordPageToggle.virtualRows < 1 || (commonKeywordPageToggle.occurrenceRows + commonKeywordPageToggle.limitNotices) < 1) {
+    throw new Error(`Virtualized page row did not stay expanded after click: ${JSON.stringify(commonKeywordPageToggle)}`);
+  }
+
   const invalidFiles = [
     {
       name: "broken.hwp",
