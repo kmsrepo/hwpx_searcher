@@ -63,10 +63,11 @@ The Group level slider controls the initial result expansion level after each se
 The theme button cycles through System, Light, and Dark modes; System follows the browser `prefers-color-scheme` setting and explicit choices are saved locally. In dark mode, popup document pages are inverted for easier reading.
 The language selector supports English and Korean UI text. The app starts in English by default, saves explicit choices locally, and also accepts `?lang=ko` or `?lang=en` when opened from `file://` or HTTP.
 
-Test samples come from `edwardkim/rhwp` commit `bea635bd708274a51ae3f557a71b07683d7c2454`:
+Test samples come from `edwardkim/rhwp` commit `b3e16ef212af81ef37d973ddb86d6816d3804642`:
 
 - `samples/lseg-01-basic.hwp`
 - `samples/hwpx/ref/ref_text.hwpx`
+- `samples/hwp3-sample.hwp`
 
 The broader upstream sample folders are vendored at `samples/rhwp-upstream/` for recursive search testing.
 
