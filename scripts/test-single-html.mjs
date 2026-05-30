@@ -83,6 +83,9 @@ try {
   if (!ready.workerSupported || ready.maxWorkers < 1 || ready.cpuThreads < 1 || ready.autoWorkerLimit !== Math.max(1, Math.ceil(ready.cpuThreads * 0.5))) {
     throw new Error(`Worker support was not detected: ${JSON.stringify(ready)}`);
   }
+  if (!ready.virtualCoreLoaded) {
+    throw new Error(`TanStack Virtual core was not loaded: ${JSON.stringify(ready)}`);
+  }
   if (ready.themePreference !== "system" || !["light", "dark"].includes(ready.theme)) {
     throw new Error(`Initial system theme was not reported: ${JSON.stringify(ready)}`);
   }
@@ -693,6 +696,9 @@ try {
       pageRows: document.querySelectorAll(".page-match-row").length,
       occurrenceRows: document.querySelectorAll(".occurrence-row").length,
       limitNotices: document.querySelectorAll(".occurrence-limit-notice").length,
+      virtualizedLists: document.querySelectorAll(".virtualized-page-match-list").length,
+      virtualRows: document.querySelectorAll(".virtual-page-match-row").length,
+      totalPageRows: detailState.results[0]?.pageMatches?.length || 0,
       storedOccurrences: detailState.results[0]?.storedOccurrences || 0,
       truncatedPages: (detailState.results[0]?.pageMatches || []).filter((page) => Number(page.count) > Number(page.stored)).length,
       maxPageStored: Math.max(0, ...(detailState.results[0]?.pageMatches || []).map((page) => Number(page.stored) || 0)),
@@ -702,8 +708,11 @@ try {
   if (commonKeywordSearch.searchResultCount !== 1 || commonKeywordSearch.scanErrors !== 0 || commonKeywordSearch.totalMatches < 1000 || commonKeywordSearch.totalMatchesBeforeDetail !== commonKeywordSearch.totalMatches) {
     throw new Error(`Common keyword search did not count HWP3 matches correctly: ${JSON.stringify(commonKeywordSearch)}`);
   }
-  if (commonKeywordSearch.storedOccurrences > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.occurrenceRows > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.maxPageStored > commonKeywordSearch.storedOccurrenceLimitPerPage || commonKeywordSearch.truncatedPages < 1 || commonKeywordSearch.limitNotices < 1 || commonKeywordSearch.pageRows < 100) {
-    throw new Error(`Common keyword search rendered too many detail rows or missed truncation notices: ${JSON.stringify(commonKeywordSearch)}`);
+  if (!commonKeywordSearch.virtualCoreLoaded || !commonKeywordSearch.resultVirtualized || commonKeywordSearch.virtualizedLists < 1 || commonKeywordSearch.virtualRows < 1) {
+    throw new Error(`Common keyword search did not use TanStack Virtual: ${JSON.stringify(commonKeywordSearch)}`);
+  }
+  if (commonKeywordSearch.storedOccurrences > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.occurrenceRows > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.maxPageStored > commonKeywordSearch.storedOccurrenceLimitPerPage || commonKeywordSearch.truncatedPages < 1 || commonKeywordSearch.totalPageRows < 100 || commonKeywordSearch.pageRows >= commonKeywordSearch.totalPageRows) {
+    throw new Error(`Common keyword search rendered too many detail rows or missed virtualization limits: ${JSON.stringify(commonKeywordSearch)}`);
   }
 
   const invalidFiles = [

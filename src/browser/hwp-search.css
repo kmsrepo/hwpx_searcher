@@ -731,6 +731,35 @@
       padding: 0 12px 10px;
     }
 
+
+    .virtualized-page-match-list {
+      position: relative;
+      display: block;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      scrollbar-gutter: stable;
+    }
+
+    .virtual-page-match-spacer {
+      position: relative;
+      min-height: 100%;
+    }
+
+    .virtual-page-match-row {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding-right: 4px;
+      will-change: transform;
+    }
+
+    .virtual-page-match-row .page-match-detail {
+      margin-bottom: 6px;
+    }
+
     .page-match-row {
       display: grid;
       grid-template-columns: auto auto minmax(0, 1fr);

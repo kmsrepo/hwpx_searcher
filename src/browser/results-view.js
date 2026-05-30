@@ -1,5 +1,12 @@
+const VIRTUAL_PAGE_MATCH_THRESHOLD = 120;
+const VIRTUAL_PAGE_MATCH_ESTIMATE = 38;
+const VIRTUAL_PAGE_MATCH_MAX_HEIGHT = 520;
+let activeResultVirtualizers = [];
+
 function renderResultList(query, caseSensitive) {
+  cleanupResultVirtualizers();
   resultsEl.textContent = "";
+  state.resultVirtualized = false;
   const groupLevel = currentGroupLevel();
   const filesOpen = groupLevel !== GROUP_LEVEL.file;
   const detailsOpen = groupLevel === GROUP_LEVEL.detail;
@@ -41,46 +48,125 @@ function renderResultList(query, caseSensitive) {
       disclosure.textContent = shouldOpen ? "-" : "+";
     });
 
-    for (const pageGroup of groupOccurrencesByPage(item)) {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "page-match-row";
-      row.setAttribute("aria-expanded", "false");
-
-      const page = document.createElement("span");
-      page.className = "page-match-page";
-      page.textContent = t("result.page", { page: pageGroup.page });
-
-      const count = document.createElement("span");
-      count.className = "page-match-count";
-      count.textContent = t("result.matchCount", { count: pageGroup.count });
-
-      const hint = document.createElement("span");
-      hint.className = "page-match-hint";
-      hint.textContent = t("result.showDetails");
-
-      const detail = document.createElement("div");
-      detail.className = "page-match-detail";
-      detail.hidden = true;
-
-      row.addEventListener("click", (event) => {
-        event.stopPropagation();
-        togglePageDetails(row, detail, hint, pageGroup, item, query, caseSensitive);
-      });
-
-      row.append(page, count, hint);
-      pageList.append(row, detail);
-      if (detailsOpen) {
-        setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, true);
-      }
-    }
-
     card.append(title, pageList);
     resultsEl.append(card);
+
+    const pageGroups = groupOccurrencesByPage(item);
+    if (shouldVirtualizePageGroups(pageGroups)) {
+      renderVirtualPageMatchList(pageList, pageGroups, item, query, caseSensitive, detailsOpen);
+    } else {
+      renderPageMatchGroups(pageList, pageGroups, item, query, caseSensitive, detailsOpen);
+    }
+
   }
 }
 
+function cleanupResultVirtualizers() {
+  for (const virtualizer of activeResultVirtualizers) {
+    virtualizer.cleanup?.();
+  }
+  activeResultVirtualizers = [];
+}
+
+function shouldVirtualizePageGroups(pageGroups) {
+  return pageGroups.length > VIRTUAL_PAGE_MATCH_THRESHOLD && Boolean(state.tanstackVirtualCore?.Virtualizer);
+}
+
+function renderPageMatchGroups(pageList, pageGroups, item, query, caseSensitive, detailsOpen) {
+  for (const pageGroup of pageGroups) {
+    const { row, detail } = createPageMatchGroupElements(pageGroup, item, query, caseSensitive, detailsOpen);
+    pageList.append(row, detail);
+  }
+}
+
+function renderVirtualPageMatchList(pageList, pageGroups, item, query, caseSensitive, detailsOpen) {
+  const core = state.tanstackVirtualCore;
+  pageList.classList.add("virtualized-page-match-list");
+  pageList.style.maxHeight = Math.min(VIRTUAL_PAGE_MATCH_MAX_HEIGHT, Math.max(160, pageGroups.length * VIRTUAL_PAGE_MATCH_ESTIMATE)) + "px";
+  pageList.tabIndex = 0;
+  state.resultVirtualized = true;
+
+  const spacer = document.createElement("div");
+  spacer.className = "virtual-page-match-spacer";
+  pageList.append(spacer);
+
+  const virtualizer = new core.Virtualizer({
+    count: pageGroups.length,
+    getScrollElement: () => pageList,
+    estimateSize: () => VIRTUAL_PAGE_MATCH_ESTIMATE,
+    overscan: 8,
+    observeElementRect: core.observeElementRect,
+    observeElementOffset: core.observeElementOffset,
+    scrollToFn: core.elementScroll,
+    getItemKey: (index) => pageGroups[index]?.page ?? index,
+    onChange: () => renderVisibleVirtualPageRows(),
+  });
+  activeResultVirtualizers.push(virtualizer);
+
+  function renderVisibleVirtualPageRows() {
+    spacer.style.height = virtualizer.getTotalSize() + "px";
+    spacer.textContent = "";
+    for (const virtualItem of virtualizer.getVirtualItems()) {
+      const pageGroup = pageGroups[virtualItem.index];
+      if (!pageGroup) {
+        continue;
+      }
+      const container = document.createElement("div");
+      container.className = "virtual-page-match-row";
+      container.dataset.index = String(virtualItem.index);
+      container.style.transform = `translateY(${virtualItem.start}px)`;
+
+      const { row, detail } = createPageMatchGroupElements(pageGroup, item, query, caseSensitive, detailsOpen, () => {
+        requestAnimationFrame(() => virtualizer.measureElement(container));
+      });
+      container.append(row, detail);
+      spacer.append(container);
+      virtualizer.measureElement(container);
+    }
+  }
+
+  virtualizer._willUpdate();
+  renderVisibleVirtualPageRows();
+}
+
+function createPageMatchGroupElements(pageGroup, item, query, caseSensitive, detailsOpen, afterToggle = null) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "page-match-row";
+  row.setAttribute("aria-expanded", "false");
+
+  const page = document.createElement("span");
+  page.className = "page-match-page";
+  page.textContent = t("result.page", { page: pageGroup.page });
+
+  const count = document.createElement("span");
+  count.className = "page-match-count";
+  count.textContent = t("result.matchCount", { count: pageGroup.count });
+
+  const hint = document.createElement("span");
+  hint.className = "page-match-hint";
+  hint.textContent = t("result.showDetails");
+
+  const detail = document.createElement("div");
+  detail.className = "page-match-detail";
+  detail.hidden = true;
+
+  row.addEventListener("click", (event) => {
+    event.stopPropagation();
+    togglePageDetails(row, detail, hint, pageGroup, item, query, caseSensitive);
+    afterToggle?.();
+  });
+
+  row.append(page, count, hint);
+  if (detailsOpen) {
+    setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, true);
+  }
+  return { row, detail };
+}
+
 function renderQueuedFileList() {
+  cleanupResultVirtualizers();
+  state.resultVirtualized = false;
   resultsEl.textContent = "";
   for (const item of state.documents) {
     const card = document.createElement("article");

@@ -18,7 +18,8 @@
     "test": "npm run build && node --test dist/*.test.js"
   },
   "dependencies": {
-    "@rhwp/core": "^0.7.13"
+    "@rhwp/core": "^0.7.13",
+    "@tanstack/virtual-core": "^3.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
