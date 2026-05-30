@@ -1,6 +1,6 @@
 # HWP Recursive Search
 
-Single-file browser app and small CLI for recursively searching `.hwp` and `.hwpx` files with [`@rhwp/core`](https://github.com/edwardkim/rhwp).
+Single-file browser app and small CLI for recursively searching `.hwp` and `.hwpx` files with [`@rhwp/core`](https://github.com/edwardkim/rhwp), including legacy HWP 3.0 documents.
 
 It is built with npm, but running a search does not require an npm dev server or long-running npm process.
 
@@ -65,9 +65,17 @@ The language selector supports English and Korean UI text. The app starts in Eng
 
 Test samples come from `edwardkim/rhwp` commit `b3e16ef212af81ef37d973ddb86d6816d3804642`:
 
-- `samples/lseg-01-basic.hwp`
-- `samples/hwpx/ref/ref_text.hwpx`
-- `samples/hwp3-sample.hwp`
+- `samples/rhwp/lseg-01-basic.hwp`
+- `samples/rhwp/ref_text.hwpx`
+- `samples/rhwp/hwp3-sample.hwp`
+- `samples/rhwp/hwp3-sample4.hwp`
+- `samples/rhwp/hwp3-sample5.hwp`
+- `samples/rhwp/hwp3-sample10.hwp`
+- `samples/rhwp/hwp3-sample11.hwp`
+- `samples/rhwp/hwp3-sample13.hwp`
+- `samples/rhwp/hwp3-sample14.hwp`
+- `samples/rhwp/hwp3-sample16.hwp`
+- `samples/rhwp/hwp3-sample19.hwp`
 
 The broader upstream sample folders are vendored at `samples/rhwp-upstream/` for recursive search testing.
 

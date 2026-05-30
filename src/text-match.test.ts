@@ -4,6 +4,18 @@ import test from "node:test";
 import { searchHwpFile } from "./search.js";
 import { findTextMatches } from "./text-match.js";
 
+const HWP3_FIXTURES = [
+  "hwp3-sample.hwp",
+  "hwp3-sample4.hwp",
+  "hwp3-sample5.hwp",
+  "hwp3-sample10.hwp",
+  "hwp3-sample11.hwp",
+  "hwp3-sample13.hwp",
+  "hwp3-sample14.hwp",
+  "hwp3-sample16.hwp",
+  "hwp3-sample19.hwp",
+];
+
 test("finds case-insensitive matches with snippets", () => {
   const matches = findTextMatches("Alpha beta ALPHA", "alpha", false, 6);
   assert.equal(matches.length, 2);
@@ -52,4 +64,21 @@ test("searches HWP 3.0 documents", async () => {
   assert.ok(result.pages > 0);
   assert.ok(result.matches > 0);
   assert.match(result.occurrences[0]?.snippet ?? "", /Virtual Servers/i);
+});
+
+test("extracts page text from real HWP 3.0 fixture corpus", async () => {
+  for (const fixture of HWP3_FIXTURES) {
+    const result = await searchHwpFile(
+      resolve("samples/rhwp", fixture),
+      "__unlikely_hwp3_query__",
+      {
+        caseSensitive: false,
+        maxSnippetsPerFile: 1,
+        snippetRadius: 16,
+      },
+    );
+
+    assert.ok(result.pages > 0, `${fixture} should expose at least one page`);
+    assert.equal(result.matches, 0, `${fixture} should scan without parser errors`);
+  }
 });
