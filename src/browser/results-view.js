@@ -130,6 +130,7 @@ function renderVirtualPageMatchList(pageList, pageGroups, item, query, caseSensi
 }
 
 function createPageMatchGroupElements(pageGroup, item, query, caseSensitive, detailsOpen, afterToggle = null) {
+  const pageKey = pageExpansionKey(pageGroup);
   const row = document.createElement("button");
   row.type = "button";
   row.className = "page-match-row";
@@ -153,15 +154,30 @@ function createPageMatchGroupElements(pageGroup, item, query, caseSensitive, det
 
   row.addEventListener("click", (event) => {
     event.stopPropagation();
-    togglePageDetails(row, detail, hint, pageGroup, item, query, caseSensitive);
+    const shouldOpen = detail.hidden;
+    setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, shouldOpen);
+    rememberPageExpansion(item, pageKey, shouldOpen);
     afterToggle?.();
   });
 
   row.append(page, count, hint);
-  if (detailsOpen) {
+  if (detailsOpen || item.expandedPageMatches?.has(pageKey)) {
     setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, true);
   }
   return { row, detail };
+}
+
+function pageExpansionKey(pageGroup) {
+  return String(pageGroup.page);
+}
+
+function rememberPageExpansion(item, pageKey, shouldOpen) {
+  item.expandedPageMatches ||= new Set();
+  if (shouldOpen) {
+    item.expandedPageMatches.add(pageKey);
+  } else {
+    item.expandedPageMatches.delete(pageKey);
+  }
 }
 
 function renderQueuedFileList() {
@@ -232,9 +248,6 @@ function groupOccurrencesByPage(item) {
   }));
 }
 
-function togglePageDetails(row, detail, hint, pageGroup, item, query, caseSensitive) {
-  setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, detail.hidden);
-}
 
 function setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensitive, shouldOpen) {
   row.setAttribute("aria-expanded", String(shouldOpen));
