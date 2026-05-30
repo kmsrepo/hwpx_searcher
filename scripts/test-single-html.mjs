@@ -670,6 +670,42 @@ try {
     throw new Error(`HWP 3.0 fixture was not searchable: ${JSON.stringify(hwp3Search)}`);
   }
 
+  const commonKeywordFiles = [
+    {
+      name: "common-hwp3.hwp",
+      relativePath: "legacy/common-hwp3.hwp",
+      base64: await readFile(path.resolve("samples/rhwp/hwp3-sample10.hwp"), "base64"),
+    },
+  ];
+  const commonKeywordImport = await client.evaluate(`window.__HWP_SINGLE_HTML_TEST__.dropFiles(${JSON.stringify(commonKeywordFiles)})`);
+  if (commonKeywordImport.localCount !== 1 || commonKeywordImport.documentCount !== 1 || commonKeywordImport.scanErrors !== 0 || commonKeywordImport.samples[0]?.format !== "HWP 3.0") {
+    throw new Error(`Common-keyword HWP3 fixture import failed: ${JSON.stringify(commonKeywordImport)}`);
+  }
+  const commonKeywordSearch = await client.evaluate(`(async () => {
+    const started = performance.now();
+    const state = await window.__HWP_SINGLE_HTML_TEST__.search("1");
+    const elapsedMs = performance.now() - started;
+    document.querySelector("[data-group-level='detail']")?.click();
+    const detailState = window.__HWP_SINGLE_HTML_TEST__.state();
+    return {
+      ...detailState,
+      elapsedMs,
+      pageRows: document.querySelectorAll(".page-match-row").length,
+      occurrenceRows: document.querySelectorAll(".occurrence-row").length,
+      limitNotices: document.querySelectorAll(".occurrence-limit-notice").length,
+      storedOccurrences: detailState.results[0]?.storedOccurrences || 0,
+      truncatedPages: (detailState.results[0]?.pageMatches || []).filter((page) => Number(page.count) > Number(page.stored)).length,
+      maxPageStored: Math.max(0, ...(detailState.results[0]?.pageMatches || []).map((page) => Number(page.stored) || 0)),
+      totalMatchesBeforeDetail: state.totalMatches,
+    };
+  })()`);
+  if (commonKeywordSearch.searchResultCount !== 1 || commonKeywordSearch.scanErrors !== 0 || commonKeywordSearch.totalMatches < 1000 || commonKeywordSearch.totalMatchesBeforeDetail !== commonKeywordSearch.totalMatches) {
+    throw new Error(`Common keyword search did not count HWP3 matches correctly: ${JSON.stringify(commonKeywordSearch)}`);
+  }
+  if (commonKeywordSearch.storedOccurrences > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.occurrenceRows > commonKeywordSearch.storedOccurrenceLimitPerFile || commonKeywordSearch.maxPageStored > commonKeywordSearch.storedOccurrenceLimitPerPage || commonKeywordSearch.truncatedPages < 1 || commonKeywordSearch.limitNotices < 1 || commonKeywordSearch.pageRows < 100) {
+    throw new Error(`Common keyword search rendered too many detail rows or missed truncation notices: ${JSON.stringify(commonKeywordSearch)}`);
+  }
+
   const invalidFiles = [
     {
       name: "broken.hwp",

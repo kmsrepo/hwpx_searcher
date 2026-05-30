@@ -41,7 +41,7 @@ function renderResultList(query, caseSensitive) {
       disclosure.textContent = shouldOpen ? "-" : "+";
     });
 
-    for (const pageGroup of groupOccurrencesByPage(item.occurrences)) {
+    for (const pageGroup of groupOccurrencesByPage(item)) {
       const row = document.createElement("button");
       row.type = "button";
       row.className = "page-match-row";
@@ -53,7 +53,7 @@ function renderResultList(query, caseSensitive) {
 
       const count = document.createElement("span");
       count.className = "page-match-count";
-      count.textContent = t("result.matchCount", { count: pageGroup.items.length });
+      count.textContent = t("result.matchCount", { count: pageGroup.count });
 
       const hint = document.createElement("span");
       hint.className = "page-match-hint";
@@ -115,15 +115,35 @@ function currentGroupLevel() {
   return Object.values(GROUP_LEVEL).includes(groupLevelEl.value) ? groupLevelEl.value : GROUP_LEVEL.file;
 }
 
-function groupOccurrencesByPage(occurrences) {
+function groupOccurrencesByPage(item) {
   const grouped = new Map();
-  for (const occurrence of occurrences) {
+  for (const occurrence of item.occurrences || []) {
     if (!grouped.has(occurrence.page)) {
       grouped.set(occurrence.page, []);
     }
     grouped.get(occurrence.page).push(occurrence);
   }
-  return [...grouped.entries()].map(([page, items]) => ({ page, items }));
+
+  if (Array.isArray(item.pageMatches) && item.pageMatches.length > 0) {
+    return item.pageMatches.map((pageMatch) => {
+      const page = Number(pageMatch.page);
+      const count = Number(pageMatch.count) || 0;
+      const items = grouped.get(page) || [];
+      return {
+        page,
+        count,
+        items,
+        truncated: count > items.length,
+      };
+    });
+  }
+
+  return [...grouped.entries()].map(([page, items]) => ({
+    page,
+    count: items.length,
+    items,
+    truncated: false,
+  }));
 }
 
 function togglePageDetails(row, detail, hint, pageGroup, item, query, caseSensitive) {
@@ -158,6 +178,33 @@ function setPageDetailsOpen(row, detail, hint, pageGroup, item, query, caseSensi
     occurrenceRow.append(number, text);
     detail.append(occurrenceRow);
   });
+
+  if (pageGroup.truncated) {
+    detail.append(renderTruncatedNotice(pageGroup, item));
+  }
+}
+
+function renderTruncatedNotice(pageGroup, item) {
+  const notice = document.createElement("div");
+  notice.className = "occurrence-limit-notice";
+
+  const text = document.createElement("span");
+  text.textContent = t("result.limitedDetails", {
+    shown: pageGroup.items.length,
+    total: pageGroup.count,
+  });
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "page-preview-button";
+  button.textContent = t("result.openPagePreview");
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    void showResultPreview(item, pageGroup.page - 1);
+  });
+
+  notice.append(text, button);
+  return notice;
 }
 
 function displayResultFormat(item) {

@@ -1,11 +1,19 @@
+const MAX_STORED_OCCURRENCES_PER_PAGE = 100;
+const MAX_STORED_OCCURRENCES_PER_FILE = 300;
+
 function findTextMatches(text, query, caseSensitive) {
+  return collectTextMatches(text, query, caseSensitive).matches;
+}
+
+function collectTextMatches(text, query, caseSensitive, maxStoredMatches = Number.POSITIVE_INFINITY) {
   if (query.length === 0) {
-    return [];
+    return { count: 0, matches: [] };
   }
 
   const needle = caseSensitive ? query : query.toLocaleLowerCase();
   const haystack = caseSensitive ? text : text.toLocaleLowerCase();
-  const output = [];
+  const matches = [];
+  let count = 0;
   let index = 0;
 
   while (index <= haystack.length) {
@@ -13,15 +21,18 @@ function findTextMatches(text, query, caseSensitive) {
     if (found === -1) {
       break;
     }
-    output.push({
-      index: found,
-      length: query.length,
-      snippet: makeSnippet(text, found, query.length),
-    });
+    count += 1;
+    if (matches.length < maxStoredMatches) {
+      matches.push({
+        index: found,
+        length: query.length,
+        snippet: makeSnippet(text, found, query.length),
+      });
+    }
     index = found + Math.max(needle.length, 1);
   }
 
-  return output;
+  return { count, matches };
 }
 
 function makeSnippet(text, index, length) {
