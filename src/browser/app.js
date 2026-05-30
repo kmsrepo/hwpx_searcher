@@ -4,9 +4,11 @@ const state = {
   localDocuments: [],
   scanErrors: [],
   rhwp: null,
+  tanstackVirtualCore: null,
   rhwpWasmBytes: null,
   wasmSource: "",
   searchResults: [],
+  resultVirtualized: false,
   searchRun: 0,
   searching: false,
   preview: null,
@@ -121,6 +123,7 @@ function resolveTabNamespace() {
 }
 
 try {
+  state.tanstackVirtualCore = await importTanStackVirtualCore(payload.tanstackVirtualCore);
   const moduleUrl = URL.createObjectURL(new Blob([payload.rhwpJs], { type: "text/javascript" }));
   const rhwp = await import(moduleUrl);
   URL.revokeObjectURL(moduleUrl);
@@ -834,6 +837,8 @@ function diagnosticState() {
     workerFallbackError: state.workerFallbackError,
     wasmSource: state.wasmSource,
     searchResultCount: state.searchResults.length,
+    resultVirtualized: Boolean(state.resultVirtualized),
+    virtualCoreLoaded: Boolean(state.tanstackVirtualCore?.Virtualizer),
     storedOccurrenceLimitPerPage: MAX_STORED_OCCURRENCES_PER_PAGE,
     storedOccurrenceLimitPerFile: MAX_STORED_OCCURRENCES_PER_FILE,
     theme: state.theme,
@@ -868,6 +873,8 @@ function diagnosticState() {
 }
 
 function renderIdleSummary() {
+  cleanupResultVirtualizers();
+  state.resultVirtualized = false;
   summaryEl.textContent = state.documents.length === 0
     ? t("summary.idle")
     : t("summary.queued", { count: state.documents.length });

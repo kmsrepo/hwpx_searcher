@@ -14,25 +14,28 @@ const wasmFallbackFileName = "rhwp_bg.wasm.base64.js";
 const wasmOutputPath = path.join(outputDir, wasmFileName);
 const wasmFallbackOutputPath = path.join(outputDir, wasmFallbackFileName);
 
-const [rhwpJs, rhwpWasm, themeBootstrapJs, css, bodyHtml] = await Promise.all([
+const [rhwpJs, rhwpWasm, tanstackVirtualCore, themeBootstrapJs, css, bodyHtml] = await Promise.all([
   readFile(require.resolve("@rhwp/core/rhwp.js"), "utf8"),
   readFile(require.resolve("@rhwp/core/rhwp_bg.wasm")),
+  readTanStackVirtualCore(),
   readFile(path.join(browserDir, "theme-bootstrap.js"), "utf8"),
   readFile(path.join(browserDir, "hwp-search.css"), "utf8"),
   readFile(path.join(browserDir, "app-body.html"), "utf8"),
 ]);
-const appJs = await readBrowserBundle(["i18n.js", "search-core.js", "wasm-loader.js", "worker-client.js", "file-store.js", "file-index.js", "results-view.js", "preview-view.js", "app.js"]);
+const appJs = await readBrowserBundle(["i18n.js", "search-core.js", "virtual-core-loader.js", "wasm-loader.js", "worker-client.js", "file-store.js", "file-index.js", "results-view.js", "preview-view.js", "app.js"]);
 const workerJs = await readBrowserBundle(["search-core.js", "search-worker.js"]);
 const payload = options.embedWasm
   ? {
     rhwpJs,
     rhwpWasmBase64: rhwpWasm.toString("base64"),
+    tanstackVirtualCore,
     workerJs,
   }
   : {
     rhwpJs,
     rhwpWasmUrl: wasmFileName,
     rhwpWasmFallbackUrl: wasmFallbackFileName,
+    tanstackVirtualCore,
     workerJs,
   };
 
@@ -103,6 +106,25 @@ ${indent(appJs.trim(), 4)}
 </body>
 </html>
 `;
+}
+
+async function readTanStackVirtualCore() {
+  const packageDir = path.dirname(require.resolve("@tanstack/virtual-core/package.json"));
+  const esmDir = path.join(packageDir, "dist", "esm");
+  const [utilsJs, lazyMeasurementsJs, indexJs] = await Promise.all([
+    readFile(path.join(esmDir, "utils.js"), "utf8"),
+    readFile(path.join(esmDir, "lazy-measurements.js"), "utf8"),
+    readFile(path.join(esmDir, "index.js"), "utf8"),
+  ]);
+  return {
+    utilsJs: browserSafeModuleSource(utilsJs),
+    lazyMeasurementsJs: browserSafeModuleSource(lazyMeasurementsJs),
+    indexJs: browserSafeModuleSource(indexJs),
+  };
+}
+
+function browserSafeModuleSource(source) {
+  return source.replace(/process\.env\.NODE_ENV/g, JSON.stringify("production"));
 }
 
 async function readBrowserBundle(files) {
