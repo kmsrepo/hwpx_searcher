@@ -37,3 +37,19 @@ test("searches layout JSON containing raw control characters", async () => {
   assert.ok(result.pages > 0);
   assert.equal(result.matches, 0);
 });
+
+test("searches HWP 3.0 documents", async () => {
+  const result = await searchHwpFile(
+    resolve("samples/rhwp/hwp3-sample.hwp"),
+    "Virtual Servers",
+    {
+      caseSensitive: false,
+      maxSnippetsPerFile: 3,
+      snippetRadius: 32,
+    },
+  );
+
+  assert.ok(result.pages > 0);
+  assert.ok(result.matches > 0);
+  assert.match(result.occurrences[0]?.snippet ?? "", /Virtual Servers/i);
+});

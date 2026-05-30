@@ -18,7 +18,7 @@
     "test": "npm run build && node --test dist/*.test.js"
   },
   "dependencies": {
-    "@rhwp/core": "latest"
+    "@rhwp/core": "^0.7.13"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
