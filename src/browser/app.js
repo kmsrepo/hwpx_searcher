@@ -292,6 +292,7 @@ async function runSearch() {
   workerCountEl.disabled = false;
   progressEl.hidden = true;
   setStatus("ready");
+  sortSearchResults();
   renderSearchSummary(state.totalMatches);
   renderResultList(query, caseEl.checked);
   renderMetrics();
@@ -304,17 +305,27 @@ async function searchDescriptor(documentIndex, descriptor, query, caseSensitive)
   try {
     const pages = doc.pageCount();
     const occurrences = [];
+    const pageMatches = [];
     let count = 0;
     let previewPage = -1;
 
     for (let page = 0; page < pages; page += 1) {
       const text = extractPageText(doc, page);
-      const matches = findTextMatches(text, query, caseSensitive);
-      if (matches.length > 0 && previewPage === -1) {
+      const remainingStoredMatches = Math.max(0, MAX_STORED_OCCURRENCES_PER_FILE - occurrences.length);
+      const storedMatchLimit = Math.min(MAX_STORED_OCCURRENCES_PER_PAGE, remainingStoredMatches);
+      const pageResult = collectTextMatches(text, query, caseSensitive, storedMatchLimit);
+      if (pageResult.count > 0 && previewPage === -1) {
         previewPage = page;
       }
-      count += matches.length;
-      for (const match of matches) {
+      count += pageResult.count;
+      if (pageResult.count > 0) {
+        pageMatches.push({
+          page: page + 1,
+          count: pageResult.count,
+          stored: pageResult.matches.length,
+        });
+      }
+      for (const match of pageResult.matches) {
         occurrences.push({
           page: page + 1,
           index: match.index,
@@ -337,6 +348,7 @@ async function searchDescriptor(documentIndex, descriptor, query, caseSensitive)
       pages,
       count,
       occurrences,
+      pageMatches,
       previewPage,
     };
   } finally {
@@ -428,9 +440,7 @@ function handleSearchResult(runId, result, query, caseSensitive) {
     result.size = sourceDescriptor?.size ?? result.size;
     result.lastModified = sourceDescriptor?.lastModified ?? result.lastModified;
     state.searchResults.push(result);
-    sortSearchResults();
     state.totalMatches += result.count;
-    renderResultList(query, caseSensitive);
   }
   summaryEl.textContent = t("summary.progress", { scanned: state.scanned, total: state.documents.length });
   renderMetrics();
@@ -824,6 +834,8 @@ function diagnosticState() {
     workerFallbackError: state.workerFallbackError,
     wasmSource: state.wasmSource,
     searchResultCount: state.searchResults.length,
+    storedOccurrenceLimitPerPage: MAX_STORED_OCCURRENCES_PER_PAGE,
+    storedOccurrenceLimitPerFile: MAX_STORED_OCCURRENCES_PER_FILE,
     theme: state.theme,
     themePreference: state.themePreference,
     language: state.language,
@@ -841,7 +853,7 @@ function diagnosticState() {
       lastModified,
       loaded: false,
     })),
-    results: state.searchResults.map(({ name, format, pages, count, path, size, lastModified }) => ({
+    results: state.searchResults.map(({ name, format, pages, count, path, size, lastModified, occurrences, pageMatches }) => ({
       name,
       format,
       pages,
@@ -849,6 +861,8 @@ function diagnosticState() {
       path,
       size,
       lastModified,
+      storedOccurrences: Array.isArray(occurrences) ? occurrences.length : 0,
+      pageMatches: Array.isArray(pageMatches) ? pageMatches.map(({ page, count, stored }) => ({ page, count, stored })) : [],
     })),
   };
 }

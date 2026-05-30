@@ -819,6 +819,39 @@
       word-break: break-word;
     }
 
+
+
+    .occurrence-limit-notice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 8px;
+      border-left: 2px solid var(--amber);
+      background: color-mix(in srgb, var(--detail-bg) 86%, var(--amber));
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .page-preview-button {
+      width: auto;
+      min-height: 28px;
+      padding: 3px 8px;
+      border-color: var(--line-strong);
+      background: var(--control-bg);
+      color: var(--control-text);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .page-preview-button:hover, .page-preview-button:focus-visible {
+      border-color: var(--accent);
+      background: var(--page-row-active-bg);
+      outline: 2px solid var(--focus);
+      outline-offset: 1px;
+    }
+
     mark {
       background: var(--mark);
       color: var(--mark-text);

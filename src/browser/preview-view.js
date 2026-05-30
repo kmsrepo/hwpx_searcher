@@ -42,14 +42,19 @@ async function showResultPreview(item, pageIndex = item.previewPage) {
     const bytes = await descriptor.getBytes();
     const doc = new state.rhwp.HwpDocument(bytes);
     try {
-      const pageOccurrences = item.occurrences.filter((occurrence) => occurrence.page === targetPage + 1);
+      const pageNumber = targetPage + 1;
+      const pageOccurrences = item.occurrences.filter((occurrence) => occurrence.page === pageNumber);
+      const pageMatch = Array.isArray(item.pageMatches)
+        ? item.pageMatches.find((match) => Number(match.page) === pageNumber)
+        : null;
+      const hasCompleteStoredOccurrences = !pageMatch || Number(pageMatch.count) === pageOccurrences.length;
       const preview = {
         documentIndex: item.documentIndex,
         label: descriptor.label,
-        page: targetPage + 1,
+        page: pageNumber,
         pages: item.pages,
         source: descriptor.source === "folder" ? descriptor.path : descriptor.repoPath,
-        svg: renderHighlightedPageSvg(doc, targetPage, item.query || searchEl.value, item.caseSensitive ?? caseEl.checked, pageOccurrences),
+        svg: renderHighlightedPageSvg(doc, targetPage, item.query || searchEl.value, item.caseSensitive ?? caseEl.checked, hasCompleteStoredOccurrences ? pageOccurrences : []),
       };
       item.previewByPage ||= {};
       item.previewByPage[targetPage] = preview;
